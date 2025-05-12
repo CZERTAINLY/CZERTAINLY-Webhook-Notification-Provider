@@ -9,6 +9,8 @@ public interface AttributeService {
 
     List<BaseAttribute> getAttributes(String kind);
 
+    List<BaseAttribute> getAllDataAttributes(String kind);
+
     boolean validateAttributes(String kind, List<RequestAttributeDto> attributes);
 
 }
