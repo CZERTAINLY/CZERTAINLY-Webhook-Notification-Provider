@@ -28,6 +28,7 @@ public class AttributeServiceImpl implements AttributeService {
 
         List<BaseAttribute> attributes = new ArrayList<>();
         attributes.add(Attributes.dataWebhookUrl());
+        attributes.add(Attributes.infoContentType());
         attributes.add(Attributes.dataContentType());
         attributes.add(Attributes.groupContentTemplate());
 
@@ -41,7 +42,6 @@ public class AttributeServiceImpl implements AttributeService {
 
         List<BaseAttribute> attributes = new ArrayList<>();
         attributes.add(Attributes.dataWebhookUrl());
-        attributes.add(Attributes.infoContentType());
         attributes.add(Attributes.dataContentType());
         attributes.add(Attributes.dataContentTemplate(null));
 
