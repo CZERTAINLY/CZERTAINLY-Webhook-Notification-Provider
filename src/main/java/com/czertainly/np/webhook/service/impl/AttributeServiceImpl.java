@@ -6,6 +6,7 @@ import com.czertainly.api.model.client.attribute.RequestAttributeDto;
 import com.czertainly.api.model.common.attribute.v2.BaseAttribute;
 import com.czertainly.core.util.AttributeDefinitionUtils;
 import com.czertainly.np.webhook.attribute.Attributes;
+import com.czertainly.np.webhook.attribute.ContentType;
 import com.czertainly.np.webhook.service.AttributeService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +36,7 @@ public class AttributeServiceImpl implements AttributeService {
         return attributes;
     }
 
-    public List<BaseAttribute> getAllDataAttributes(String kind) {
+    public List<BaseAttribute> getAllDataAttributes(String kind, ContentType contentType) {
         if (!kind.equals("WEBHOOK")) {
             throw new ValidationException(ValidationError.create("Unsupported kind {}", kind));
         }
@@ -43,7 +44,7 @@ public class AttributeServiceImpl implements AttributeService {
         List<BaseAttribute> attributes = new ArrayList<>();
         attributes.add(Attributes.dataWebhookUrl());
         attributes.add(Attributes.dataContentType());
-        attributes.add(Attributes.dataContentTemplate(null));
+        attributes.add(Attributes.dataContentTemplate(contentType));
 
         return attributes;
     }

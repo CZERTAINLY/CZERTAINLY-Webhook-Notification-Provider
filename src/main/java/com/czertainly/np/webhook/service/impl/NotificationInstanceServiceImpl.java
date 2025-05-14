@@ -76,7 +76,7 @@ public class NotificationInstanceServiceImpl implements NotificationInstanceServ
         String contentTemplate = null;
         if (contentType != ContentType.RAW_JSON) {
             contentTemplate = AttributeDefinitionUtils.getSingleItemAttributeContentValue(
-                    Attributes.DATA_CONTENT_TEMPLATE_NAME, request.getAttributes(), CodeBlockAttributeContent.class).getData().getCode();
+                    Attributes.getDataContentTemplateName(contentType), request.getAttributes(), CodeBlockAttributeContent.class).getData().getCode();
         }
 
         NotificationInstance notificationInstance = new NotificationInstance();
@@ -85,7 +85,7 @@ public class NotificationInstanceServiceImpl implements NotificationInstanceServ
         notificationInstance.setUrl(url);
         notificationInstance.setContentType(contentType);
         notificationInstance.setContentTemplate(contentTemplate);
-        notificationInstance.setAttributes(AttributeDefinitionUtils.mergeAttributes(attributeService.getAllDataAttributes(request.getKind()), request.getAttributes()));
+        notificationInstance.setAttributes(AttributeDefinitionUtils.mergeAttributes(attributeService.getAllDataAttributes(request.getKind(), contentType), request.getAttributes()));
 
         notificationInstanceRepository.save(notificationInstance);
 
@@ -116,13 +116,13 @@ public class NotificationInstanceServiceImpl implements NotificationInstanceServ
         String contentTemplate = null;
         if (contentType != ContentType.RAW_JSON) {
             contentTemplate = AttributeDefinitionUtils.getSingleItemAttributeContentValue(
-                    Attributes.DATA_CONTENT_TEMPLATE_NAME, request.getAttributes(), CodeBlockAttributeContent.class).getData().getCode();
+                    Attributes.getDataContentTemplateName(contentType), request.getAttributes(), CodeBlockAttributeContent.class).getData().getCode();
         }
 
         notificationInstance.setUrl(url);
         notificationInstance.setContentType(contentType);
         notificationInstance.setContentTemplate(contentTemplate);
-        notificationInstance.setAttributes(AttributeDefinitionUtils.mergeAttributes(attributeService.getAllDataAttributes(request.getKind()), request.getAttributes()));
+        notificationInstance.setAttributes(AttributeDefinitionUtils.mergeAttributes(attributeService.getAllDataAttributes(request.getKind(), contentType), request.getAttributes()));
 
         notificationInstanceRepository.save(notificationInstance);
 

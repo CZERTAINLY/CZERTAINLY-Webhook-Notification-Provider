@@ -151,8 +151,10 @@ public class Attributes {
     public static DataAttribute dataContentTemplate(ContentType contentType) {
         DataAttribute attribute = new DataAttribute();
 
-        attribute.setUuid(DATA_CONTENT_TEMPLATE_UUID);
-        attribute.setName(DATA_CONTENT_TEMPLATE_NAME);
+        // UUID and name must be unique for each attribute
+        // Generate a unique UUID for the attribute based on the content type
+        attribute.setUuid(getDataContentTemplateUuid(contentType));
+        attribute.setName(getDataContentTemplateName(contentType));
         attribute.setDescription(DATA_CONTENT_TEMPLATE_DESCRIPTION);
         attribute.setContentType(AttributeContentType.CODEBLOCK);
         attribute.setType(AttributeType.DATA);
@@ -175,6 +177,14 @@ public class Attributes {
         attribute.setContent(content);
 
         return attribute;
+    }
+
+    public static String getDataContentTemplateUuid(ContentType contentType) {
+        return UUID.nameUUIDFromBytes((DATA_CONTENT_TEMPLATE_UUID+contentType.getContentType()).getBytes()).toString();
+    }
+
+    public static String getDataContentTemplateName(ContentType contentType) {
+        return DATA_CONTENT_TEMPLATE_NAME + "_" + contentType.getContentType();
     }
 
 }
