@@ -33,3 +33,22 @@ Webhook Notification Provider `Connector` is provided as a Docker container. Use
 | `DB_SCHEMA`     | Database schema to use                                   | ![](https://img.shields.io/badge/-NO-red.svg)      | `webhooknp`   |
 | `PORT`          | Port where the service is exposed                        | ![](https://img.shields.io/badge/-NO-red.svg)      | `8080`        |
 | `JAVA_OPTS`     | Customize Java system properties for running application | ![](https://img.shields.io/badge/-NO-red.svg)      | `N/A`         |
+| `NOTIFICATION_LOG_REQUEST_PAYLOAD` | Include the notification request in DEBUG logs. See [How to enable DEBUG logs](#how-to-enable-debug-logs) | ![](https://img.shields.io/badge/-NO-red.svg) | `false` |
+
+## How to enable DEBUG logs
+
+To enable DEBUG logs for the implementation of the webhook notification provider, you need to set the following environment variable:
+```shell
+LOGGING_LEVEL_COM_CZERTAINLY=DEBUG
+```
+
+DEBUG logs describe each notification by its identifiers only — event, resource, recipient count, and whether notification data is present. The notification request itself is never written to the logs at any level unless payload logging is switched on explicitly:
+
+```shell
+NOTIFICATION_LOG_REQUEST_PAYLOAD=true
+```
+
+> **Warning**
+> With payload logging enabled, DEBUG logs contain the complete notification request, including data that can be sensitive — for example the one-time credential of certificate registration events, or object data enabled on the notification profile. Enable it only while troubleshooting, and treat the logs accordingly.
+
+Template failures do not need it: they are reported at ERROR level with the template identifier, the event and resource, and the position of the failing expression in the template, without exposing any payload.

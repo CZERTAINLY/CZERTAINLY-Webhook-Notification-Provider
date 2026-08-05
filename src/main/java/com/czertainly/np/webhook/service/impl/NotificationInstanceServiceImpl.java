@@ -19,8 +19,10 @@ import com.czertainly.np.webhook.util.TemplateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 import reactor.core.publisher.Mono;
 
 import java.util.Base64;
@@ -37,9 +39,22 @@ public class NotificationInstanceServiceImpl implements NotificationInstanceServ
 
     private AttributeService attributeService;
 
+    /**
+     * Whether DEBUG logging includes the notification request itself. The request carries values
+     * that must not reach logs by default — the certificate-registration credential among them —
+     * so payload logging is a separate, deliberate switch rather than a side effect of raising the
+     * log level.
+     */
+    private boolean logRequestPayload;
+
     @Autowired
     public void setNotificationInstanceRepository(NotificationInstanceRepository notificationInstanceRepository) {
         this.notificationInstanceRepository = notificationInstanceRepository;
+    }
+
+    @Value("${notification.log-request-payload:false}")
+    public void setLogRequestPayload(boolean logRequestPayload) {
+        this.logRequestPayload = logRequestPayload;
     }
 
     @Autowired
@@ -144,7 +159,11 @@ public class NotificationInstanceServiceImpl implements NotificationInstanceServ
                 .findByUuid(uuid)
                 .orElseThrow(() -> new NotFoundException(NotificationInstance.class, uuid));
 
-        logger.debug("Request to send webhook received with the content: {}", request);
+        if (logger.isDebugEnabled()) {
+            logger.debug("Request to send webhook received: {}", logRequestPayload
+                    ? TemplateUtils.describeRequestForDebug(request)
+                    : TemplateUtils.summarizeRequest(request));
+        }
 
         // send request data to webhook URL as POST JSON request
         // create NotificationException if the request fails
@@ -152,7 +171,6 @@ public class NotificationInstanceServiceImpl implements NotificationInstanceServ
         // + add random nonce to header X-CZERTAINLY-Nonce
         String url = notificationInstance.getUrl();
         String timestamp = String.valueOf(System.currentTimeMillis());
-        // nonce has at least 128-bit entropy and its valus is Base64 encoded
         String nonce = Base64.getEncoder().encodeToString(UUID.randomUUID().toString().getBytes());
 
         Object content;
@@ -161,7 +179,7 @@ public class NotificationInstanceServiceImpl implements NotificationInstanceServ
             content = request;
         } else {
             String contentTemplate = notificationInstance.getContentTemplate();
-            content = TemplateUtils.processFreeMarkerTemplate(contentTemplate, request);
+            content = TemplateUtils.processFreeMarkerTemplate("webhook content", contentTemplate, request);
         }
 
         logger.info("Sending webhook to: {}, with timestamp {}, and nonce {}", url, timestamp, nonce);
@@ -180,10 +198,26 @@ public class NotificationInstanceServiceImpl implements NotificationInstanceServ
                     return Mono.error(new NotificationException("Failed to send webhook to " + url + ": " + clientResponse.statusCode()));
                 })
                 .bodyToMono(Void.class)
-                .doOnError(e -> logger.error("Error sending webhook to {}: {}", url, e.getMessage()))
-                .subscribe();
+                // Delivery is asynchronous, so the outcome is logged from the callbacks rather
+                // than after subscribing. The explicit error consumer also keeps failures out of
+                // Reactor's onErrorDropped logging, which would print the raw throwable and
+                // bypass the sanitization in describeSendFailure.
+                .doOnSuccess(unused -> logger.info("Webhook sent to: {}", url))
+                .subscribe(unused -> { },
+                        e -> logger.error("Error sending webhook to {}: {}", url, describeSendFailure(e)));
+    }
 
-        logger.info("Webhook sent to: {}", url);
+    /**
+     * Transport failures carry safe, useful detail (host, port, HTTP status); anything else —
+     * for example a request-body encoding failure — can embed request content in its message,
+     * so only the exception type is reported. The request itself is inspectable through DEBUG
+     * logging.
+     */
+    static String describeSendFailure(Throwable e) {
+        if (e instanceof NotificationException || e instanceof WebClientRequestException) {
+            return e.getMessage();
+        }
+        return e.getClass().getSimpleName();
     }
 
 }
