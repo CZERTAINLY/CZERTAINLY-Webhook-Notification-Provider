@@ -32,6 +32,9 @@ build/
 ### VS Code ###
 .vscode/
 
+### Local working documents ###
+docs/superpowers/
+
 application-*.yml
 
 .DS_Store
