@@ -9,9 +9,14 @@ jobs:
     name: Sonar
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: github.event.workflow_run.conclusion == 'success'
+    # Fork pull requests are skipped deliberately. This job is privileged — it holds SONAR_TOKEN
+    # and the base repository token — and Maven executes project-controlled configuration, so
+    # checking out untrusted code here would expose those secrets.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
     env:
-      HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
     permissions:
       actions: read
       contents: read
@@ -22,7 +27,7 @@ jobs:
       - run: mkdir -p ${{ runner.temp }}/artifacts/
       # Download the PR number artifact
       - name: Download PR number
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: pr-number
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -35,17 +40,16 @@ jobs:
       # Request GitHub API for PR data
       - name: Request GitHub API for PR data
         if: github.event.workflow_run.event == 'pull_request'
-        uses: octokit/request-action@v2.x
+        uses: octokit/request-action@b91aabaa861c777dcdb14e2387e30eddf04619ae # v3.0.0
         id: get_pr_data
         with:
           route: GET /repos/${{ github.event.repository.full_name }}/pulls/${{ steps.pr_number.outputs.content }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # Checkout the PR branch
-      - uses: actions/checkout@v4
+      # Checkout the exact commit the build verified
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repository: ${{ github.event.workflow_run.head_repository.full_name }}
-          ref: ${{ github.event.workflow_run.head_branch }}
+          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
       # Checkout the base branch to keep the information about the new lines of code
       - name: Checkout base branch
@@ -54,11 +58,11 @@ jobs:
           git remote add upstream ${{ github.event.repository.clone_url }}
           git fetch upstream
           git checkout -B ${{ fromJson(steps.get_pr_data.outputs.data).base.ref }} upstream/${{ fromJson(steps.get_pr_data.outputs.data).base.ref }}
-          git checkout $HEAD_BRANCH
+          git checkout $HEAD_SHA
           git clean -ffdx && git reset --hard HEAD
       # Download compiled classes
       - name: Download Compiled Classes
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: compiled-classes
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -66,7 +70,7 @@ jobs:
           path: target/classes
       # Download Jacoco XML coverage files
       - name: Download Coverage Reports
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: coverage-reports
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -82,7 +86,7 @@ jobs:
           SONAR_PR_BRANCH: ${{ fromJson(steps.get_pr_data.outputs.data).head.ref }}
           SONAR_PR_BASE: ${{ fromJson(steps.get_pr_data.outputs.data).base.ref }}
         run: |
-          mvn org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+          mvn org.sonarsource.scanner.maven:sonar-maven-plugin:5.7.0.6970:sonar \
             -Dsonar.scm.revision=$SONAR_REVISION \
             -Dsonar.pullrequest.key=$SONAR_PR_KEY \
             -Dsonar.pullrequest.branch=$SONAR_PR_BRANCH \

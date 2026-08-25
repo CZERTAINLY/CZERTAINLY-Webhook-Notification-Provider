@@ -1,11 +1,11 @@
-# CZERTAINLY-Webhook-Notification-Provider
+# Webhook Notification Provider
 
-> This repository is part of the commercial open-source project CZERTAINLY. You can find more information about the project at [CZERTAINLY](https://github.com/CZERTAINLY/CZERTAINLY) repository, including the contribution guide.
+> This repository is part of the commercial open-source project ILM. You can find more information about the project at the [ILM](https://github.com/OmniTrustILM/ilm) repository, including the contribution guide.
 
 Webhook Notification Provider `Connector` is the implementation of the following `Function Groups` and `Kinds`:
 
-| Function Group          | Kind    |
-|-------------------------|---------|
+| Function Group          | Kind      |
+|-------------------------|-----------|
 | `Notification Provider` | `WEBHOOK` |
 
 It is compatible with the `Notification Provider` interface. This connector provides the following features:
@@ -17,13 +17,13 @@ Webhook Notification Provider `Connector` requires the PostgreSQL database to st
 
 ## Interfaces
 
-Webhook Notification Provider implements `Notification Provider` interfaces. To learn more about the interfaces and end points, refer to the [CZERTAINLY Interfaces](https://github.com/CZERTAINLY/CZERTAINLY-Interfaces).
+Webhook Notification Provider implements `Notification Provider` interfaces. To learn more about the interfaces and end points, refer to the [Interfaces](https://github.com/OmniTrustILM/interfaces).
 
-For more information, please refer to the [CZERTAINLY documentation](https://docs.czertainly.com).
+For more information, please refer to the [documentation](https://docs.otilm.com).
 
 ## Docker container
 
-Webhook Notification Provider `Connector` is provided as a Docker container. Use the `czertainly/czertainly-webhook-notification-provider:tagname` to pull the required image from the repository. It can be configured using the following environment variables:
+Webhook Notification Provider `Connector` is provided as a Docker container. Use the `hub.omnitrustregistry.com/ilm/webhook-notification-provider:tagname` to pull the required image from the repository. It can be configured using the following environment variables:
 
 | Variable        | Description                                              | Required                                           | Default value |
 |-----------------|----------------------------------------------------------|----------------------------------------------------|---------------|
@@ -35,11 +35,47 @@ Webhook Notification Provider `Connector` is provided as a Docker container. Use
 | `JAVA_OPTS`     | Customize Java system properties for running application | ![](https://img.shields.io/badge/-NO-red.svg)      | `N/A`         |
 | `NOTIFICATION_LOG_REQUEST_PAYLOAD` | Include the notification request in DEBUG logs. See [How to enable DEBUG logs](#how-to-enable-debug-logs) | ![](https://img.shields.io/badge/-NO-red.svg) | `false` |
 
+## Attributes to configure
+
+Configuring an instance of this Webhook Notification Provider requires the following attributes:
+
+| Attribute        | Description                                            | Content Type |
+|------------------|--------------------------------------------------------|--------------|
+| Webhook URL      | URL the event data is sent to                          | `STRING`     |
+| Content type     | Format of the request body, see below                  | `STRING`     |
+| Content template | Template rendering the request body, per content type  | `CODEBLOCK`  |
+
+The following content types are supported:
+
+| Content type | Request body                                                      | `Content-Type` header |
+|--------------|-------------------------------------------------------------------|-----------------------|
+| `RAW_JSON`   | The notification request serialized as-is, no template involved   | `application/json`    |
+| `JSON`       | Rendered from the content template                                | `application/json`    |
+| `XML`        | Rendered from the content template                                | `application/xml`     |
+
+`RAW_JSON` takes no content template. For `JSON` and `XML` the content template is rendered with
+FreeMarker against the notification request, so its fields are available as variables — for example
+`${event}`, `${resource}` and `${notificationData.serialNumber}`.
+
+## Delivery request
+
+Notifications are delivered as an HTTP `POST` to the configured webhook URL. Alongside the
+`Content-Type` of the selected content type, each request carries:
+
+| Header                | Description                                                                  |
+|-----------------------|------------------------------------------------------------------------------|
+| `X-Webhook-Timestamp` | Delivery time in milliseconds since the epoch, for replay detection          |
+| `X-Webhook-Nonce`     | Per-delivery nonce, letting the receiver discard duplicate deliveries        |
+
+> **Note**
+> These headers were named `X-CZERTAINLY-Timestamp` and `X-CZERTAINLY-Nonce` before version 1.1.0.
+> Receivers that validate the header names need to be updated.
+
 ## How to enable DEBUG logs
 
 To enable DEBUG logs for the implementation of the webhook notification provider, you need to set the following environment variable:
 ```shell
-LOGGING_LEVEL_COM_CZERTAINLY=DEBUG
+LOGGING_LEVEL_COM_OTILM=DEBUG
 ```
 
 DEBUG logs describe each notification by its identifiers only — event, resource, recipient count, and whether notification data is present. The notification request itself is never written to the logs at any level unless payload logging is switched on explicitly:

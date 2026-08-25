@@ -1,11 +1,13 @@
 # Build stage
-FROM maven:3.9.9-eclipse-temurin-21 as build
+FROM maven:3.9.16-eclipse-temurin-21 AS build
 
 COPY src /home/app/src
 COPY pom.xml /home/app
 COPY settings.xml /root/.m2/settings.xml
 COPY docker /home/app/docker
 
+# Tests are not run here: the build and build_pr workflows already run the full suite once on
+# native hardware, and this stage is built once per target architecture.
 RUN mvn -f /home/app/pom.xml clean package -DskipTests
 
 # Optimize stage
@@ -31,7 +33,7 @@ RUN $JAVA_HOME/bin/jlink \
          --strip-debug \
          --no-man-pages \
          --no-header-files \
-         --compress=2 \
+         --compress=zip-6 \
          --output /javaruntime
 
 # Package stage
@@ -43,15 +45,17 @@ ENV PATH="${JAVA_HOME}/bin:${PATH}"
 # copy optimized JRE
 COPY --from=optimize /javaruntime $JAVA_HOME
 
-LABEL org.opencontainers.image.authors="CZERTAINLY <support@czertainly.com>"
+LABEL org.opencontainers.image.authors="ILM <ilm@omnitrust.com>"
 
-# add non root user czertainly
-RUN addgroup --system --gid 10001 czertainly && adduser --system --home /opt/czertainly --uid 10001 --ingroup czertainly czertainly
+# Upgrade OS packages to pick up security fixes not yet in the base image
+RUN apk update && apk upgrade --no-cache
+
+RUN addgroup --system --gid 10001 webhook-notification-provider && adduser --system --home /opt/webhook-notification-provider --uid 10001 --ingroup webhook-notification-provider webhook-notification-provider
 
 COPY --from=build /home/app/docker /
-COPY --from=build /home/app/target/*.jar /opt/czertainly/app.jar
+COPY --from=build /home/app/target/*.jar /opt/webhook-notification-provider/app.jar
 
-WORKDIR /opt/czertainly
+WORKDIR /opt/webhook-notification-provider
 
 ENV JDBC_URL=
 ENV JDBC_USERNAME=
@@ -62,4 +66,4 @@ ENV JAVA_OPTS=
 
 USER 10001
 
-ENTRYPOINT ["/opt/czertainly/entry.sh"]
+ENTRYPOINT ["/opt/webhook-notification-provider/entry.sh"]
